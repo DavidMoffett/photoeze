@@ -1,1 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Photoeze</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Cabinet+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --white: #ffffff;
+    --grey-100: #f5f5f5;
+    --grey-200: #e8e8e8;
+    --grey-400: #9a9a9a;
+    --grey-600: #555555;
+    --opal: #b8d4d0;
+    --opal-dark: #7aada7;
+    --opal-light: #e0eeec;
+    --bg: #fafaf8;
+    --sidebar-w: 220px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cabinet Grotesk', sans-serif; background: var(--bg); color: var(--black); min-height: 100vh; }
+
+  /* AUTH */
+  .auth-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--black); }
+  .auth-box { background: var(--white); border-radius: 20px; padding: 48px 40px; width: 420px; max-width: 95vw; }
+  .auth-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 32px; margin-bottom: 4px; text-align: center; }
+  .auth-logo span { color: var(--opal-dark); }
+  .auth-tagline { font-size: 12px; color: var(--grey-400); margin-bottom: 32px; letter-spacing: 1.5px; text-transform: uppercase; text-align: center; }
+  .auth-tabs { display: flex; margin-bottom: 24px; border-bottom: 2px solid var(--grey-200); }
+  .auth-tab { padding: 10px 20px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--grey-400); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+  .auth-tab.active { color: var(--black); border-bottom-color: var(--black); }
+  .auth-form { display: none; }
+  .auth-form.active { display: block; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 13px; font-weight: 600; margin-bottom: 5px; display: block; }
+  .form-input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--grey-200); border-radius: 8px; font-family: 'Cabinet Grotesk', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .form-input:focus { border-color: var(--black); }
+  .password-wrap { position: relative; }
+  .password-wrap .form-input { padding-right: 44px; }
+  .password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--grey-400); font-size: 16px; padding: 0; }
+  .btn-full { width: 100%; background: var(--black); color: var(--white); border: none; padding: 12px; border-radius: 8px; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; margin-top: 8px; }
+  .btn-full:hover { background: #222; }
+  .btn-full:disabled { background: var(--grey-400); cursor: not-allowed; }
+  .auth-error { background: #fee; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #c00; margin-bottom: 14px; display: none; }
+  .auth-success { background: var(--opal-light); border: 1px solid var(--opal); border-radius: 8px; padding: 10px 14px; font-size: 13px; color: var(--black); margin-bottom: 14px; display: none; }
+
+  /* APP */
+  .app { display: none; }
+  .app.visible { display: flex; }
+
+  /* SIDEBAR */
+  .sidebar { width: var(--sidebar-w); background: var(--black); min-height: 100vh; display: flex; flex-direction: column; position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; }
+  .sidebar-logo { padding: 28px 24px 24px; border-bottom: 1px solid #1e1e1e; }
+  .logo-wordmark { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: var(--white); }
+  .logo-wordmark span { color: var(--opal); }
+  .logo-tagline { font-size: 10px; color: var(--grey-400); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 3px; }
+  .sidebar-nav { padding: 20px 12px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 8px; cursor: pointer; color: var(--grey-400); font-size: 14px; font-weight: 500; transition: all 0.15s; margin-bottom: 2px; }
+  .nav-item:hover, .nav-item.active { background: #1a1a1a; color: var(--white); }
+  .nav-item.active .nav-icon { color: var(--opal); }
+  .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-footer { padding: 16px 12px; border-top: 1px solid #1a1a1a; }
+  .plan-badge { background: #1a1a1a; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+  .plan-name { font-size: 11px; color: var(--grey-400); text-transform: uppercase; letter-spacing: 1px; }
+  .plan-tier { font-size: 14px; font-weight: 700; color: var(--opal); margin-top: 2px; }
+  .plan-days { font-size: 11px; color: var(--grey-400); margin-top: 2px; }
+  .btn-upgrade { width: 100%; background: var(--opal); color: var(--black); border: none; padding: 10px; border-radius: 8px; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .btn-upgrade:hover { background: var(--opal-dark); color: var(--white); }
+
+  /* MAIN */
+  .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; }
+  .topbar { background: var(--white); border-bottom: 1px solid var(--grey-200); padding: 0 32px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  .topbar-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .btn-primary { background: var(--black); color: var(--white); border: none; padding: 9px 18px; border-radius: 8px; font-family: 'Cabinet Grotesk', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-primary:hover { background: #222; }
+  .avatar { width: 36px; height: 36px; background: var(--opal); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; color: var(--black); cursor: pointer; position: relative; }
+  .avatar-menu { position: absolute; top: 44px; right: 0; background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 10px; padding: 8px; min-width: 160px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); display: none; z-index: 200; }
+  .avatar-menu.open { display: block; }
+  .avatar-menu-item { padding: 9px 12px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 6px; }
+  .avatar-menu-item:hover { background: var(--grey-100); }
+  .avatar-menu-item.danger { color: #c00; }
+
+  .content { padding: 32px; max-width: 1100px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .trial-note { background: var(--opal-light); border: 1px solid var(--opal); border-radius: 8px; padding: 10px 16px; font-size: 12px; color: var(--black); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+
+  /* ONBOARDING */
+  .onboarding-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 36px; }
+  .onboarding-card { background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 12px; padding: 20px 16px; transition: all 0.15s; position: relative; }
+  .onboarding-card.clickable { cursor: pointer; }
+  .onboarding-card.clickable:hover { border-color: var(--black); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .onboarding-card.done { border-color: var(--opal); background: var(--opal-light); }
+  .card-icon { width: 36px; height: 36px; background: var(--grey-100); border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-size: 18px; }
+  .onboarding-card.done .card-icon { background: var(--opal); }
+  .card-label { font-size: 12px; font-weight: 700; color: var(--black); line-height: 1.3; }
+  .card-sub { font-size: 11px; color: var(--grey-400); margin-top: 4px; }
+  .card-check { position: absolute; top: 12px; right: 12px; width: 18px; height: 18px; background: var(--opal-dark); border-radius: 50%; display: none; align-items: center; justify-content: center; }
+  .onboarding-card.done .card-check { display: flex; }
+
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; }
+
+  /* GALLERIES */
+  .gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 36px; }
+  .gallery-card { background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 12px; overflow: hidden; transition: all 0.15s; }
+  .gallery-card:hover { border-color: var(--black); box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+  .gallery-thumb { height: 140px; background: linear-gradient(135deg, #1a1a1a 0%, #333 100%); position: relative; display: flex; align-items: center; justify-content: center; }
+  .gallery-thumb-placeholder { color: #444; font-size: 32px; }
+  .gallery-thumb-count { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.7); color: var(--white); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; }
+  .gallery-info { padding: 14px; }
+  .gallery-name { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+  .gallery-meta { font-size: 12px; color: var(--grey-400); display: flex; gap: 12px; }
+  .gallery-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--grey-100); flex-wrap: wrap; }
+  .btn-sm { font-family: 'Cabinet Grotesk', sans-serif; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: 1.5px solid var(--grey-200); background: var(--white); color: var(--black); transition: all 0.12s; }
+  .btn-sm:hover { background: var(--grey-100); border-color: var(--black); }
+  .btn-sm.primary { background: var(--black); color: var(--white); border-color: var(--black); }
+  .btn-sm.primary:hover { background: #333; }
+  .btn-sm.danger { border-color: #fcc; color: #c00; }
+  .btn-sm.danger:hover { background: #fee; }
+
+  .empty-state { text-align: center; padding: 48px 24px; color: var(--grey-400); grid-column: 1/-1; }
+  .empty-state-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state-title { font-weight: 700; font-size: 16px; color: var(--black); margin-bottom: 6px; }
+  .empty-state-text { font-size: 13px; }
+
+  /* STATS */
+  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  .stat-card { background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 12px; padding: 20px; }
+  .stat-label { font-size: 11px; color: var(--grey-400); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .stat-value { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 28px; line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--grey-400); margin-top: 4px; }
+
+  /* TABLES */
+  .table-wrap { background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 12px; overflow: hidden; margin-bottom: 24px; }
+  .table-head { display: grid; padding: 12px 20px; background: var(--grey-100); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--grey-400); border-bottom: 1px solid var(--grey-200); }
+  .table-row { display: grid; padding: 14px 20px; font-size: 13px; border-bottom: 1px solid var(--grey-100); align-items: center; }
+  .table-row:last-child { border-bottom: none; }
+  .table-row:hover { background: var(--grey-100); }
+  .visitors-cols { grid-template-columns: 2fr 1.5fr 1fr 1fr; }
+  .sales-cols { grid-template-columns: 2fr 1.5fr 1fr 1fr 100px; }
+  .visitor-name { font-weight: 600; }
+  .amount { font-weight: 700; }
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .status-paid { background: #d4edda; color: #155724; }
+
+  /* SETTINGS */
+  .settings-section { background: var(--white); border: 1.5px solid var(--grey-200); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .settings-section-header { padding: 16px 20px; border-bottom: 1px solid var(--grey-200); font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--grey-100); }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-label { font-size: 14px; font-weight: 600; }
+  .settings-hint { font-size: 12px; color: var(--grey-400); margin-top: 2px; }
+  .toggle { width: 40px; height: 22px; background: var(--grey-200); border-radius: 11px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle.on { background: var(--black); }
+  .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: left 0.2s; }
+  .toggle.on::after { left: 21px; }
+  .watermark-preview { width: 100%; height: 160px; background: linear-gradient(135deg, #1a1a1a, #333); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-top: 12px; overflow: hidden; }
+  .watermark-text-overlay { color: rgba(255,255,255,0.35); font-family: 'Syne', sans-serif; font-weight: 800; font-size: 28px; letter-spacing: 2px; user-select: none; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--white); border-radius: 16px; padding: 32px; width: 500px; max-width: 95vw; position: relative; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 20px; margin-bottom: 20px; }
+  .form-hint { font-size: 11px; color: var(--grey-400); margin-top: 4px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .btn-cancel { font-family: 'Cabinet Grotesk', sans-serif; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 8px; cursor: pointer; border: 1.5px solid var(--grey-200); background: var(--white); color: var(--grey-600); }
+  .modal-close { position: absolute; top: 16px; right: 20px; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--grey-400); line-height: 1; }
+
+  .drop-zone { border: 2px dashed var(--grey-200); border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--black); background: var(--grey-100); }
+  .drop-zone-icon { font-size: 32px; margin-bottom: 8px; }
+  .drop-zone-text { font-size: 14px; font-weight: 600; }
+  .drop-zone-sub { font-size: 12px; color: var(--grey-400); margin-top: 4px; }
+
+  .upload-progress { margin-top: 12px; display: none; }
+  .upload-progress-bar { height: 6px; background: var(--grey-200); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+  .upload-progress-fill { height: 100%; background: var(--opal-dark); border-radius: 3px; width: 0%; transition: width 0.3s; }
+  .upload-progress-text { font-size: 12px; color: var(--grey-400); }
+
+  .form-error { background: #fee; border: 1px solid #fcc; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #c00; margin-top: 12px; display: none; }
+
+  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--grey-400); font-size: 14px; gap: 10px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--grey-200); border-top-color: var(--black); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  select.form-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div class="auth-screen" id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">photo<span>eze</span></div>
+    <div class="auth-tagline">Uncover Your Vision</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchTab('signup')">Create Account</div>
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <div id="auth-success" class="auth-success"></div>
+
+    <div id="form-login" class="auth-form active">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="login-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="password-wrap">
+          <input class="form-input" type="password" id="login-password" placeholder="••••••••">
+          <button class="password-toggle" onclick="togglePw('login-password',this)">👁</button>
+        </div>
+      </div>
+      <button class="btn-full" onclick="handleLogin()">Sign In</button>
+    </div>
+
+    <div id="form-signup" class="auth-form">
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" type="text" id="signup-name" placeholder="David Moffett">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-input" type="email" id="signup-email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="password-wrap">
+          <input class="form-input" type="password" id="signup-password" placeholder="Min 6 characters">
+          <button class="password-toggle" onclick="togglePw('signup-password',this)">👁</button>
+        </div>
+      </div>
+      <button class="btn-full" onclick="handleSignup()">Start Free Trial</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-wordmark">photo<span>eze</span></div>
+      <div class="logo-tagline">Uncover Your Vision</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showPage('galleries')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Galleries
+      </div>
+      <div class="nav-item" onclick="showPage('visitors')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Visitors
+      </div>
+      <div class="nav-item" onclick="showPage('sales')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Sales
+      </div>
+      <div class="nav-item" onclick="showPage('settings')">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="plan-badge">
+        <div class="plan-name">Current Plan</div>
+        <div class="plan-tier">Free Trial</div>
+        <div class="plan-days" id="trial-days">14 days remaining</div>
+      </div>
+      <button class="btn-upgrade">Choose a Plan</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">Galleries</div>
+      <div class="topbar-right">
+        <div class="avatar" id="avatar-btn" onclick="toggleAvatarMenu()">
+          <span id="avatar-initials">?</span>
+          <div class="avatar-menu" id="avatar-menu">
+            <div class="avatar-menu-item" id="avatar-email" style="color:var(--grey-400);font-size:12px;cursor:default;padding-bottom:8px;border-bottom:1px solid var(--grey-100);margin-bottom:4px"></div>
+            <div class="avatar-menu-item danger" onclick="handleSignOut()">Sign Out</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- GALLERIES -->
+      <div id="page-galleries" class="page active">
+        <div class="trial-note">✨ Everything is unlocked during your trial — watermark, pricing, selling. No upgrades needed.</div>
+
+        <div class="onboarding-cards">
+          <div class="onboarding-card clickable" id="card-create" onclick="openModal('modal-new-gallery')">
+            <div class="card-icon">🖼️</div>
+            <div class="card-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg></div>
+            <div class="card-label">Create Gallery</div>
+            <div class="card-sub" id="card-create-sub">Tap to start</div>
+          </div>
+          <div class="onboarding-card clickable" id="card-watermark" onclick="showPage('settings')">
+            <div class="card-icon">🏷️</div>
+            <div class="card-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg></div>
+            <div class="card-label">Add Watermark</div>
+            <div class="card-sub">Settings → Watermark</div>
+          </div>
+          <div class="onboarding-card clickable" id="card-stripe" onclick="showPage('settings')">
+            <div class="card-icon">💳</div>
+            <div class="card-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg></div>
+            <div class="card-label">Connect Stripe</div>
+            <div class="card-sub">Settings → Stripe</div>
+          </div>
+          <div class="onboarding-card" id="card-share">
+            <div class="card-icon">🔗</div>
+            <div class="card-check"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20,6 9,17 4,12"/></svg></div>
+            <div class="card-label">Share Gallery</div>
+            <div class="card-sub" id="card-share-sub">Hit Publish on a gallery</div>
+          </div>
+        </div>
+
+        <div class="section-header"><div class="section-title">Your Galleries</div></div>
+        <div class="gallery-grid" id="gallery-grid">
+          <div class="loading"><div class="spinner"></div> Loading galleries…</div>
+        </div>
+      </div>
+
+      <!-- VISITORS -->
+      <div id="page-visitors" class="page">
+        <div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat-card"><div class="stat-label">Total Visitors</div><div class="stat-value" id="stat-visitors">—</div><div class="stat-sub">Registered</div></div>
+          <div class="stat-card"><div class="stat-label">Galleries</div><div class="stat-value" id="stat-galleries">—</div><div class="stat-sub">Active</div></div>
+          <div class="stat-card"><div class="stat-label">Downloads</div><div class="stat-value" id="stat-downloads">—</div><div class="stat-sub">Paid</div></div>
+        </div>
+        <div class="section-header"><div class="section-title">Visitor Register</div></div>
+        <div class="table-wrap">
+          <div class="table-head visitors-cols"><div>Name</div><div>Email</div><div>Gallery</div><div>Registered</div></div>
+          <div id="visitors-body"><div class="loading"><div class="spinner"></div> Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- SALES -->
+      <div id="page-sales" class="page">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value" id="stat-revenue">$0</div><div class="stat-sub">NZD</div></div>
+          <div class="stat-card"><div class="stat-label">Orders</div><div class="stat-value" id="stat-orders">0</div><div class="stat-sub">Paid downloads</div></div>
+          <div class="stat-card"><div class="stat-label">Commission</div><div class="stat-value">$0</div><div class="stat-sub">You keep 100%</div></div>
+          <div class="stat-card"><div class="stat-label">Avg. Order</div><div class="stat-value" id="stat-avg">$0</div><div class="stat-sub">Per download</div></div>
+        </div>
+        <div class="section-header"><div class="section-title">Order History</div></div>
+        <div class="table-wrap">
+          <div class="table-head sales-cols"><div>Customer</div><div>Gallery</div><div>Amount</div><div>Date</div><div>Status</div></div>
+          <div id="orders-body"><div class="loading"><div class="spinner"></div> Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="page-settings" class="page">
+        <div class="settings-section">
+          <div class="settings-section-header">🏷️ Watermark</div>
+          <div class="settings-row">
+            <div><div class="settings-label">Watermark Text</div><div class="settings-hint">Applied to all gallery previews automatically</div></div>
+            <input class="form-input" style="width:220px" id="wm-text" placeholder="© Your Name" oninput="updateWatermarkPreview()">
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Position</div><div class="settings-hint">Where text appears on the image</div></div>
+            <select class="form-input" style="width:160px" id="wm-position">
+              <option value="centre">Centre</option>
+              <option value="bottom-right">Bottom Right</option>
+              <option value="bottom-left">Bottom Left</option>
+              <option value="tiled">Tiled</option>
+            </select>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Opacity</div><div class="settings-hint">Lower = more subtle</div></div>
+            <input type="range" min="10" max="80" value="35" id="wm-opacity" style="width:160px" oninput="updateWatermarkPreview()">
+          </div>
+          <div style="padding:0 20px 20px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--grey-400)">PREVIEW</div>
+            <div class="watermark-preview"><div class="watermark-text-overlay" id="wm-preview">© Your Name</div></div>
+          </div>
+          <div style="padding:0 20px 20px;text-align:right">
+            <button class="btn-primary" onclick="saveWatermarkSettings()">Save Watermark</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-header">💳 Stripe Connect</div>
+          <div class="settings-row">
+            <div><div class="settings-label">Connect Stripe Account</div><div class="settings-hint">Payments go directly to your Stripe. Photoeze takes 0%.</div></div>
+            <button class="btn-sm primary">Connect Stripe →</button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-header">🔔 Notifications</div>
+          <div class="settings-row">
+            <div><div class="settings-label">Email on new sale</div><div class="settings-hint">Get notified every time someone buys</div></div>
+            <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Email on new visitor</div><div class="settings-hint">When someone registers to view your gallery</div></div>
+            <div class="toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <div class="settings-section-header">👤 Account</div>
+          <div class="settings-row">
+            <div><div class="settings-label" id="settings-name">—</div><div class="settings-hint" id="settings-email-display">—</div></div>
+            <button class="btn-sm">Edit Profile</button>
+          </div>
+          <div class="settings-row">
+            <div><div class="settings-label">Your Gallery URL</div><div class="settings-hint" id="settings-url">photoeze.netlify.app/your-slug</div></div>
+            <button class="btn-sm" onclick="copyGalleryUrl()">Copy Link</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- NEW GALLERY MODAL -->
+<div class="modal-overlay" id="modal-new-gallery">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modal-new-gallery')">×</button>
+    <div class="modal-title">New Gallery</div>
+    <div class="form-group">
+      <label class="form-label">Gallery Name</label>
+      <input class="form-input" id="ng-name" placeholder="e.g. Christchurch Hunt — April 2026">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Price per Download (NZD)</label>
+      <input class="form-input" id="ng-price" placeholder="10.00" type="number" step="0.01" min="0">
+      <div class="form-hint">You keep 100% — Photoeze charges zero commission.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Upload Photos</label>
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <input type="file" id="file-input" multiple accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+        <div class="drop-zone-icon">📁</div>
+        <div class="drop-zone-text" id="drop-text">Drop photos here or click to browse</div>
+        <div class="drop-zone-sub">JPG, PNG · Compressed automatically · Watermark applied on upload</div>
+      </div>
+      <div class="upload-progress" id="upload-progress">
+        <div class="upload-progress-bar"><div class="upload-progress-fill" id="upload-fill"></div></div>
+        <div class="upload-progress-text" id="upload-text">Uploading…</div>
+      </div>
+    </div>
+    <div class="form-error" id="ng-error"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('modal-new-gallery')">Cancel</button>
+      <button class="btn-primary" id="btn-create-gallery" onclick="createGallery()">Create Gallery</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://lqqnkxqcdyudfanjmaqu.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxcW5reHFjZHl1ZGZhbmptYXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjgzODAsImV4cCI6MjA5MTI0NDM4MH0.htjpf-CeEdVV1-8h8Ev98qbhxmWgD1I0mUQ7OOJ1dNs';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  const API = '/.netlify/functions/api';
+
+  let currentUser = null;
+  let currentPhotographer = null;
+  let selectedFiles = [];
+
+  // ── INIT ──
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if (session?.user) {
+      currentUser = session.user;
+      await initApp();
+    } else {
+      currentUser = null;
+      showAuth();
+    }
+  });
+
+  // ── API ──
+  async function api(path, method, body) {
+    const session = await sb.auth.getSession();
+    const token = session.data.session?.access_token;
+    const opts = {
+      method: method || 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      }
+    };
+    if (body) opts.body = JSON.stringify(body);
+    try {
+      const res = await fetch(API + path, opts);
+      return res.json();
+    } catch (e) { return { error: e.message }; }
+  }
+
+  // ── AUTH ──
+  function showAuth() {
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
+  }
+
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+  }
+
+  function switchTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='signup')));
+    document.getElementById('form-login').classList.toggle('active', tab === 'login');
+    document.getElementById('form-signup').classList.toggle('active', tab === 'signup');
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-success').style.display = 'none';
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function togglePw(id, btn) {
+    const input = document.getElementById(id);
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? '👁' : '🙈';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return showAuthError('Please enter your email and password.');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showAuthError(error.message);
+  }
+
+  async function handleSignup() {
+    const full_name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value.trim();
+    const password = document.getElementById('signup-password').value;
+    if (!full_name || !email || !password) return showAuthError('Please fill in all fields.');
+    if (password.length < 6) return showAuthError('Password must be at least 6 characters.');
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name } } });
+    if (error) return showAuthError(error.message);
+    if (data.user) {
+      const slug = full_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
+      await sb.from('photographers').upsert({ id: data.user.id, email, full_name, slug });
+    }
+  }
+
+  async function handleSignOut() { await sb.auth.signOut(); }
+
+  function toggleAvatarMenu() { document.getElementById('avatar-menu').classList.toggle('open'); }
+  document.addEventListener('click', e => {
+    const btn = document.getElementById('avatar-btn');
+    if (btn && !btn.contains(e.target)) document.getElementById('avatar-menu').classList.remove('open');
+  });
+
+  // ── INIT APP ──
+  async function initApp() {
+    showApp();
+    const { data } = await sb.from('photographers').select('*').eq('id', currentUser.id).single();
+    currentPhotographer = data;
+
+    if (data) {
+      const name = data.full_name || currentUser.user_metadata?.full_name || '';
+      const initials = (name || data.email || 'U').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      document.getElementById('avatar-initials').textContent = initials;
+      document.getElementById('avatar-email').textContent = data.email;
+      document.getElementById('settings-name').textContent = name || 'Your Name';
+      document.getElementById('settings-email-display').textContent = data.email;
+      document.getElementById('settings-url').textContent = 'photoeze.netlify.app/' + (data.slug || 'your-slug');
+      if (data.trial_ends_at) {
+        const days = Math.max(0, Math.ceil((new Date(data.trial_ends_at) - new Date()) / 86400000));
+        document.getElementById('trial-days').textContent = days + ' days remaining';
+      }
+    }
+    loadGalleries();
+  }
+
+  // ── NAVIGATION ──
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const titles = { galleries: 'Galleries', visitors: 'Visitors', sales: 'Sales', settings: 'Settings' };
+    document.getElementById('page-title').textContent = titles[page];
+    const idx = { galleries: 0, visitors: 1, sales: 2, settings: 3 };
+    document.querySelectorAll('.nav-item')[idx[page]].classList.add('active');
+    if (page === 'visitors') loadVisitors();
+    if (page === 'sales') loadSales();
+    if (page === 'settings') loadWatermarkSettings();
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  document.querySelectorAll('.modal-overlay').forEach(o => {
+    o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+  });
+
+  // ── GALLERIES ──
+  async function loadGalleries() {
+    const grid = document.getElementById('gallery-grid');
+    grid.innerHTML = '<div class="loading"><div class="spinner"></div> Loading galleries…</div>';
+
+    const { data: galleries, error } = await sb.from('galleries').select('*, photos(count)').eq('photographer_id', currentUser.id).order('created_at', { ascending: false });
+
+    if (error) { grid.innerHTML = '<div class="loading">Error loading galleries.</div>'; return; }
+
+    if (galleries?.length > 0) {
+      document.getElementById('card-create').classList.add('done');
+      document.getElementById('card-create-sub').textContent = galleries.length + ' created';
+      if (galleries.some(g => g.is_published)) {
+        document.getElementById('card-share').classList.add('done');
+        document.getElementById('card-share-sub').textContent = 'Gallery is live';
+      }
+    }
+
+    let html = '';
+    if (galleries?.length > 0) {
+      galleries.forEach(g => {
+        const count = g.photos?.[0]?.count || 0;
+        html += '<div class="gallery-card">' +
+          '<div class="gallery-thumb"><div class="gallery-thumb-placeholder">📷</div>' +
+          '<div class="gallery-thumb-count">' + count + ' photo' + (count !== 1 ? 's' : '') + '</div></div>' +
+          '<div class="gallery-info">' +
+          '<div class="gallery-name">' + escHtml(g.name) + '</div>' +
+          '<div class="gallery-meta"><span>$' + Number(g.price_nzd).toFixed(2) + ' NZD</span><span>' + (g.is_published ? '🟢 Live' : '⚪ Draft') + '</span></div>' +
+          '<div class="gallery-actions">' +
+          '<button class="btn-sm primary">View</button>' +
+          '<button class="btn-sm" onclick="copyShareLink(\'' + g.slug + '\')">Share</button>' +
+          '<button class="btn-sm" onclick="togglePublish(\'' + g.id + '\',' + g.is_published + ')">' + (g.is_published ? 'Unpublish' : 'Publish') + '</button>' +
+          '<button class="btn-sm danger" onclick="deleteGallery(\'' + g.id + '\',\'' + escHtml(g.name) + '\')">Delete</button>' +
+          '</div></div></div>';
+      });
+    } else {
+      html = '<div class="empty-state"><div class="empty-state-icon">🖼️</div><div class="empty-state-title">No galleries yet</div><div class="empty-state-text">Click Create Gallery to get started.</div></div>';
+    }
+
+    grid.innerHTML = html;
+  }
+
+  async function togglePublish(id, current) {
+    await sb.from('galleries').update({ is_published: !current }).eq('id', id);
+    loadGalleries();
+  }
+
+  async function deleteGallery(id, name) {
+    if (!confirm('Delete "' + name + '"? This cannot be undone.')) return;
+    await sb.from('photos').delete().eq('gallery_id', id);
+    await sb.from('galleries').delete().eq('id', id);
+    loadGalleries();
+  }
+
+  function copyShareLink(slug) {
+    const url = 'https://photoeze.netlify.app/' + (currentPhotographer?.slug || 'photographer') + '/' + slug;
+    navigator.clipboard.writeText(url);
+    alert('Link copied!');
+  }
+
+  // ── FILE SELECT ──
+  function handleFileSelect(e) {
+    selectedFiles = Array.from(e.target.files);
+    document.getElementById('drop-text').textContent = selectedFiles.length + ' photo' + (selectedFiles.length !== 1 ? 's' : '') + ' selected';
+  }
+
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    selectedFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    document.getElementById('drop-text').textContent = selectedFiles.length + ' photo' + (selectedFiles.length !== 1 ? 's' : '') + ' ready';
+  });
+
+  async function compressImage(file) {
+    return new Promise(resolve => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDim = 3000;
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => resolve(blob), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => resolve(file);
+      img.src = url;
+    });
+  }
+
+  // ── CREATE GALLERY ──
+  async function createGallery() {
+    const name = document.getElementById('ng-name').value.trim();
+    const price = parseFloat(document.getElementById('ng-price').value) || 10;
+    const errEl = document.getElementById('ng-error');
+    errEl.style.display = 'none';
+    if (!name) { errEl.textContent = 'Please enter a gallery name.'; errEl.style.display = 'block'; return; }
+
+    const btn = document.getElementById('btn-create-gallery');
+    btn.disabled = true;
+    btn.textContent = 'Creating…';
+
+    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Date.now();
+    const { data: gallery, error } = await sb.from('galleries').insert({ photographer_id: currentUser.id, name, slug, price_nzd: price }).select().single();
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create Gallery';
+      return;
+    }
+
+    if (selectedFiles.length > 0) {
+      const progress = document.getElementById('upload-progress');
+      const fill = document.getElementById('upload-fill');
+      const txt = document.getElementById('upload-text');
+      progress.style.display = 'block';
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        txt.textContent = 'Compressing ' + (i + 1) + ' of ' + selectedFiles.length + '…';
+        try {
+          const compressed = await compressImage(file);
+          const key = currentUser.id + '/' + gallery.id + '/' + Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          txt.textContent = 'Uploading ' + (i + 1) + ' of ' + selectedFiles.length + '…';
+          const { error: uploadError } = await sb.storage.from('photos-original').upload(key, compressed, { contentType: 'image/jpeg' });
+          if (!uploadError) {
+            await sb.from('photos').insert({ gallery_id: gallery.id, photographer_id: currentUser.id, filename: file.name, storage_path: key, size_bytes: compressed.size });
+          }
+        } catch (e) { console.error('Upload error:', e); }
+        fill.style.width = Math.round(((i + 1) / selectedFiles.length) * 100) + '%';
+      }
+
+      txt.textContent = selectedFiles.length + ' photos uploaded ✓';
+      setTimeout(() => { progress.style.display = 'none'; fill.style.width = '0%'; }, 2000);
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Create Gallery';
+    selectedFiles = [];
+    document.getElementById('ng-name').value = '';
+    document.getElementById('ng-price').value = '';
+    document.getElementById('drop-text').textContent = 'Drop photos here or click to browse';
+    closeModal('modal-new-gallery');
+    loadGalleries();
+  }
+
+  // ── VISITORS ──
+  async function loadVisitors() {
+    const body = document.getElementById('visitors-body');
+    body.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+    const { data: visitors } = await sb.from('visitors').select('*, galleries(name)').eq('photographer_id', currentUser.id).order('created_at', { ascending: false });
+    const { count: galleryCount } = await sb.from('galleries').select('*', { count: 'exact', head: true }).eq('photographer_id', currentUser.id);
+    const { count: orderCount } = await sb.from('orders').select('*', { count: 'exact', head: true }).eq('photographer_id', currentUser.id).eq('status', 'paid');
+    document.getElementById('stat-visitors').textContent = visitors?.length || 0;
+    document.getElementById('stat-galleries').textContent = galleryCount || 0;
+    document.getElementById('stat-downloads').textContent = orderCount || 0;
+    if (!visitors?.length) {
+      body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👥</div><div class="empty-state-title">No visitors yet</div><div class="empty-state-text">Share your gallery link to start getting visitors.</div></div>';
+      return;
+    }
+    body.innerHTML = visitors.map(v => '<div class="table-row visitors-cols"><div><div class="visitor-name">' + escHtml(v.full_name) + '</div></div><div style="color:var(--grey-400);font-size:13px">' + escHtml(v.email) + '</div><div style="font-size:13px">' + escHtml(v.galleries?.name || '—') + '</div><div style="font-size:13px;color:var(--grey-400)">' + formatDate(v.created_at) + '</div></div>').join('');
+  }
+
+  // ── SALES ──
+  async function loadSales() {
+    const body = document.getElementById('orders-body');
+    body.innerHTML = '<div class="loading"><div class="spinner"></div> Loading…</div>';
+    const { data: orders } = await sb.from('orders').select('*, galleries(name)').eq('photographer_id', currentUser.id).order('created_at', { ascending: false });
+    const paid = (orders || []).filter(o => o.status === 'paid');
+    const revenue = paid.reduce((sum, o) => sum + Number(o.amount_nzd), 0);
+    document.getElementById('stat-revenue').textContent = '$' + revenue.toFixed(2);
+    document.getElementById('stat-orders').textContent = paid.length;
+    document.getElementById('stat-avg').textContent = '$' + (paid.length ? (revenue / paid.length).toFixed(2) : '0.00');
+    if (!orders?.length) {
+      body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><div class="empty-state-title">No sales yet</div><div class="empty-state-text">Connect Stripe and share your gallery to start selling.</div></div>';
+      return;
+    }
+    body.innerHTML = orders.map(o => '<div class="table-row sales-cols"><div><div class="visitor-name">' + escHtml(o.buyer_name) + '</div></div><div style="font-size:13px;color:var(--grey-400)">' + escHtml(o.galleries?.name || '—') + '</div><div class="amount">$' + Number(o.amount_nzd).toFixed(2) + '</div><div style="font-size:13px;color:var(--grey-400)">' + formatDate(o.created_at) + '</div><div><span class="status-badge status-' + o.status + '">' + o.status + '</span></div></div>').join('');
+  }
+
+  // ── WATERMARK ──
+  async function loadWatermarkSettings() {
+    const { data } = await sb.from('watermark_settings').select('*').eq('id', currentUser.id).single();
+    if (data) {
+      document.getElementById('wm-text').value = data.text || '';
+      document.getElementById('wm-position').value = data.position || 'centre';
+      document.getElementById('wm-opacity').value = data.opacity || 35;
+      updateWatermarkPreview();
+    }
+  }
+
+  async function saveWatermarkSettings() {
+    const settings = { id: currentUser.id, text: document.getElementById('wm-text').value, position: document.getElementById('wm-position').value, opacity: parseInt(document.getElementById('wm-opacity').value) };
+    await sb.from('watermark_settings').upsert(settings);
+    document.getElementById('card-watermark').classList.add('done');
+    alert('Watermark saved.');
+  }
+
+  function updateWatermarkPreview() {
+    const text = document.getElementById('wm-text').value || '© Your Name';
+    const opacity = (document.getElementById('wm-opacity').value || 35) / 100;
+    const el = document.getElementById('wm-preview');
+    el.textContent = text;
+    el.style.color = 'rgba(255,255,255,' + opacity + ')';
+  }
+
+  function copyGalleryUrl() {
+    navigator.clipboard.writeText('https://photoeze.netlify.app/' + (currentPhotographer?.slug || 'your-slug'));
+    alert('Link copied!');
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+</script>
+</body>
+</html>
 
