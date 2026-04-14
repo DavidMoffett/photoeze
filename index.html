@@ -1,130 +1,751 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Photoeze</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Photoeze</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --blue:#0f2333;
+      --blue-deep:#0a1823;
+      --gold:#c7a35a;
+      --white:#ffffff;
+      --muted:#c8d0d6;
+      --border:rgba(255,255,255,0.10);
+    }
 
-<style>
-body{margin:0;background:#0f2333;color:#fff;font-family:system-ui}
-.wrap{max-width:1000px;margin:auto;padding:20px}
-h1{font-family:'Syne'}
+    *{box-sizing:border-box}
 
-input,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none}
-button{background:#c7a35a;font-weight:bold}
+    body{
+      margin:0;
+      background:var(--blue);
+      color:var(--white);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
 
-.panel{background:#0a1823;padding:16px;border-radius:12px;margin-bottom:12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+    .wrap{
+      max-width:1100px;
+      margin:auto;
+      padding:24px;
+    }
 
-img{width:100%;height:200px;object-fit:cover;border-radius:8px}
-</style>
+    h1,h2{
+      font-family:'Syne',sans-serif;
+      margin-top:0;
+    }
+
+    .panel{
+      background:var(--blue-deep);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:16px;
+    }
+
+    input,button{
+      width:100%;
+      padding:12px;
+      margin-top:10px;
+      border-radius:10px;
+      border:none;
+      font-size:14px;
+    }
+
+    input{
+      background:#ffffff;
+      color:#000000;
+    }
+
+    button{
+      background:var(--gold);
+      color:#000000;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    button.secondary{
+      background:transparent;
+      color:var(--white);
+      border:1px solid var(--border);
+    }
+
+    button:disabled{
+      opacity:0.65;
+      cursor:not-allowed;
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+      gap:16px;
+    }
+
+    .gallery-card{
+      background:rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .gallery-name{
+      font-family:'Syne',sans-serif;
+      font-size:20px;
+      margin-bottom:8px;
+    }
+
+    .gallery-meta{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.6;
+      margin-bottom:12px;
+      word-break:break-word;
+    }
+
+    .gallery-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .gallery-actions button,
+    .gallery-actions a{
+      flex:1;
+      min-width:120px;
+      text-align:center;
+      text-decoration:none;
+      border-radius:10px;
+      padding:10px 12px;
+      font-size:14px;
+      margin-top:0;
+    }
+
+    .gallery-actions a{
+      background:transparent;
+      color:var(--white);
+      border:1px solid var(--border);
+    }
+
+    .metrics{
+      font-size:15px;
+      color:var(--muted);
+      margin-top:6px;
+    }
+
+    .metrics .gold{
+      color:var(--gold);
+      font-weight:700;
+    }
+
+    .photo-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+      gap:14px;
+    }
+
+    .photo-card{
+      position:relative;
+    }
+
+    .photo-card img{
+      width:100%;
+      height:200px;
+      object-fit:cover;
+      border-radius:10px;
+      display:block;
+      cursor:pointer;
+      background:#08121a;
+    }
+
+    .delete-btn{
+      position:absolute;
+      top:8px;
+      right:8px;
+      z-index:10;
+      width:28px;
+      height:28px;
+      border-radius:50%;
+      background:rgba(0,0,0,0.6);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:14px;
+      padding:0;
+      border:none;
+      opacity:0.2;
+      transition:opacity 0.2s ease;
+      margin-top:0;
+    }
+
+    .photo-card:hover .delete-btn{
+      opacity:1;
+    }
+
+    .progress-wrap{
+      margin-top:12px;
+    }
+
+    .progress-label{
+      font-size:13px;
+      color:var(--muted);
+      margin-bottom:8px;
+      min-height:18px;
+    }
+
+    .progress{
+      width:100%;
+      height:10px;
+      background:rgba(255,255,255,0.08);
+      border-radius:999px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,0.06);
+    }
+
+    .progress-bar{
+      height:100%;
+      width:0%;
+      background:var(--gold);
+      transition:width 0.2s ease;
+    }
+
+    .status{
+      color:var(--muted);
+      font-size:13px;
+      white-space:pre-wrap;
+    }
+
+    .lightbox{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.92);
+      display:none;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      z-index:999;
+    }
+
+    .lightbox.open{
+      display:flex;
+    }
+
+    .lightbox img{
+      max-width:90%;
+      max-height:80%;
+    }
+
+    .controls{
+      position:absolute;
+      top:20px;
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      padding:0 30px;
+    }
+
+    .controls button{
+      width:auto;
+      background:rgba(0,0,0,0.5);
+      color:white;
+      padding:10px 14px;
+      margin-top:0;
+    }
+
+    .bottom-controls{
+      position:absolute;
+      bottom:30px;
+      display:flex;
+      gap:10px;
+    }
+
+    .bottom-controls button{
+      width:auto;
+      margin-top:0;
+    }
+  </style>
 </head>
-
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <h1 id="brand">PHOTOEZE</h1>
 
-<h1 id="brand">PHOTOEZE</h1>
+    <div id="auth" class="panel">
+      <h2>Photographer Login</h2>
+      <input id="email" type="email" placeholder="Email" />
+      <input id="password" type="password" placeholder="Password" />
+      <button id="login-btn" onclick="login()">Login</button>
+    </div>
 
-<div id="auth">
-<input id="email" placeholder="Email">
-<input id="password" type="password" placeholder="Password">
-<button onclick="login()">Login</button>
-</div>
+    <div id="app" class="hidden">
+      <div class="panel">
+        <button class="secondary" onclick="logout()">Sign Out</button>
+      </div>
 
-<div id="app" style="display:none">
+      <div id="dashboard">
+        <div class="panel">
+          <h2>Create Gallery</h2>
+          <input id="gname" type="text" placeholder="Gallery name" />
+          <input id="gprice" type="number" placeholder="Price NZD" />
+          <button id="create-gallery-btn" onclick="createGallery()">Create</button>
+        </div>
 
-<button onclick="logout()">Sign Out</button>
+        <div class="panel">
+          <h2>Your Galleries</h2>
+          <div id="galleries" class="grid"></div>
+        </div>
+      </div>
 
-<div class="panel">
-<h2>Create Gallery</h2>
-<input id="gname" placeholder="Gallery name">
-<input id="gprice" type="number" placeholder="Price NZD">
-<button onclick="createGallery()">Create</button>
-</div>
+      <div id="editor" class="hidden">
+        <div class="panel">
+          <button class="secondary" onclick="back()">← Back</button>
+        </div>
 
-<div id="galleries" class="grid"></div>
+        <div class="panel">
+          <h2 id="gtitle">Gallery</h2>
+          <div id="metrics" class="metrics">
+            Photos 0 · Visitors 0 · Purchasers 0 · Downloads 0 · <span class="gold">Revenue $0</span>
+          </div>
+        </div>
 
-<div id="photos"></div>
+        <div class="panel">
+          <input id="files" type="file" accept="image/*" multiple />
+          <button id="upload-btn" onclick="upload()">Upload Photos</button>
 
-</div>
+          <div class="progress-wrap">
+            <div id="progress-label" class="progress-label">Ready to upload</div>
+            <div class="progress">
+              <div id="progress-bar" class="progress-bar"></div>
+            </div>
+          </div>
+        </div>
 
-</div>
+        <div class="panel">
+          <div id="photos" class="photo-grid"></div>
+        </div>
+      </div>
+    </div>
 
-<script>
-const sb = supabase.createClient(
-'https://lqqnkxqcdyudfanjmaqu.supabase.co',
-'YOUR_ANON_KEY'
-);
+    <div class="panel">
+      <h2>Status</h2>
+      <div id="status" class="status">Ready</div>
+    </div>
+  </div>
 
-let user,currentGallery;
+  <div id="lightbox" class="lightbox">
+    <div class="controls">
+      <button onclick="prev()">←</button>
+      <button onclick="closeLightbox()">Close</button>
+      <button onclick="next()">→</button>
+    </div>
 
-async function login(){
-const {data,error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});
-if(error)return alert(error.message);
-user=data.user;
-brand.innerText=user.email.split('@')[0].toUpperCase();
-auth.style.display='none';
-app.style.display='block';
-loadGalleries();
-}
+    <img id="lightbox-img" alt="Preview" />
 
-async function logout(){await sb.auth.signOut();location.reload();}
+    <div class="bottom-controls">
+      <button onclick="toggleSlideshow()">Play / Pause</button>
+    </div>
+  </div>
 
-async function loadGalleries(){
-const {data}=await sb.from('galleries').select('*').eq('photographer_id',user.id);
-galleries.innerHTML=data.map(g=>`
-<div class="panel">
-<b>${g.name}</b><br>$${g.price_nzd}
-<br>
-<button onclick="openGallery('${g.id}')">Open</button>
-<br><br>
-<b>Buyer link:</b><br>
-<a href="gallery.html?gallery_id=${g.id}" target="_blank">Open Buyer Page</a>
-</div>`).join('');
-}
+  <script>
+    const sb = supabase.createClient(
+      'https://lqqnkxqcdyudfanjmaqu.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxcW5reHFjZHl1ZGZhbmptYXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjgzODAsImV4cCI6MjA5MTI0NDM4MH0.htjpf-CeEdVV1-8h8Ev98qbhxmWgD1I0mUQ7OOJ1dNs'
+    );
 
-async function createGallery(){
-await sb.from('galleries').insert({
-photographer_id:user.id,
-name:gname.value,
-price_nzd:Number(gprice.value),
-slug:Date.now()
-});
-loadGalleries();
-}
+    let user = null;
+    let currentGallery = null;
+    let photoList = [];
+    let currentIndex = 0;
+    let slide = null;
 
-async function openGallery(id){
-currentGallery=id;
-const {data}=await sb.from('photos').select('*').eq('gallery_id',id);
+    const loginBtn = document.getElementById('login-btn');
+    const createGalleryBtn = document.getElementById('create-gallery-btn');
+    const uploadBtn = document.getElementById('upload-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const progressLabel = document.getElementById('progress-label');
 
-let html='<div class="panel"><input type="file" id="files" multiple><button onclick="upload()">Upload</button></div>';
+    function setStatus(text) {
+      document.getElementById('status').textContent = text;
+    }
 
-for(const p of data){
-const {data:url}=await sb.storage.from('photos-original').createSignedUrl(p.storage_path,3600);
-html+=`<img src="${url.signedUrl}">`;
-}
+    function setUploadProgress(percent, label) {
+      progressBar.style.width = percent + '%';
+      progressLabel.textContent = label;
+    }
 
-photos.innerHTML=html;
-}
+    function resetUploadProgress() {
+      setUploadProgress(0, 'Ready to upload');
+    }
 
-async function upload(){
-const arr=Array.from(files.files);
-for(const f of arr){
-const path=user.id+'/'+currentGallery+'/'+Date.now()+f.name;
-await sb.storage.from('photos-original').upload(path,f);
-await sb.from('photos').insert({
-gallery_id:currentGallery,
-photographer_id:user.id,
-filename:f.name,
-storage_path:path
-});
-}
-openGallery(currentGallery);
-}
-</script>
+    async function login() {
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Logging in...';
 
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value
+      });
+
+      if (error) {
+        alert(error.message);
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login';
+        return;
+      }
+
+      user = data.user;
+      document.getElementById('brand').innerText = user.email.split('@')[0].toUpperCase();
+      document.getElementById('auth').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+
+      await loadGalleries();
+
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Login';
+      setStatus('Logged in');
+    }
+
+    async function logout() {
+      await sb.auth.signOut();
+      location.reload();
+    }
+
+    async function loadGalleries() {
+      const { data, error } = await sb
+        .from('galleries')
+        .select('*')
+        .eq('photographer_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      document.getElementById('galleries').innerHTML = data.map(g => `
+        <div class="gallery-card">
+          <div class="gallery-name">${g.name}</div>
+          <div class="gallery-meta">
+            Price: $${Number(g.price_nzd || 0).toFixed(2)} NZD<br>
+            ID: ${g.id}
+          </div>
+          <div class="gallery-actions">
+            <button onclick="openGallery('${g.id}')">Open</button>
+            <button onclick="deleteGallery('${g.id}')">Delete</button>
+            <a href="gallery.html?gallery_id=${g.id}" target="_blank">Buyer Page</a>
+          </div>
+        </div>
+      `).join('');
+
+      setStatus('Galleries loaded');
+    }
+
+    async function createGallery() {
+      createGalleryBtn.disabled = true;
+      createGalleryBtn.textContent = 'Creating...';
+
+      const { error } = await sb.from('galleries').insert({
+        photographer_id: user.id,
+        name: document.getElementById('gname').value,
+        price_nzd: Number(document.getElementById('gprice').value),
+        slug: String(Date.now()),
+        is_published: false
+      });
+
+      if (error) {
+        alert(error.message);
+        createGalleryBtn.disabled = false;
+        createGalleryBtn.textContent = 'Create';
+        return;
+      }
+
+      await loadGalleries();
+
+      createGalleryBtn.disabled = false;
+      createGalleryBtn.textContent = 'Create';
+      setStatus('Gallery created');
+    }
+
+    async function openGallery(id) {
+      const { data, error } = await sb
+        .from('galleries')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      currentGallery = data;
+      document.getElementById('dashboard').classList.add('hidden');
+      document.getElementById('editor').classList.remove('hidden');
+      document.getElementById('gtitle').innerText = data.name;
+
+      await loadPhotos();
+      await updateMetrics();
+    }
+
+    function back() {
+      document.getElementById('editor').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+      resetUploadProgress();
+    }
+
+    async function updateMetrics() {
+      const { data, error } = await sb
+        .from('photos')
+        .select('*')
+        .eq('gallery_id', currentGallery.id);
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      document.getElementById('metrics').innerHTML =
+        `Photos ${data.length} · Visitors 0 · Purchasers 0 · Downloads 0 · <span class="gold">Revenue $0</span>`;
+    }
+
+    async function loadPhotos() {
+      const { data, error } = await sb
+        .from('photos')
+        .select('*')
+        .eq('gallery_id', currentGallery.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      photoList = [];
+      let html = '';
+
+      for (const p of data) {
+        const { data: urlData, error: urlError } = await sb.storage
+          .from('photos-original')
+          .createSignedUrl(p.storage_path, 3600);
+
+        if (urlError || !urlData?.signedUrl) continue;
+
+        const signed = urlData.signedUrl;
+        photoList.push(signed);
+
+        html += `
+          <div class="photo-card">
+            <img src="${signed}" loading="lazy" onclick="openLightbox('${signed}')">
+            <button class="delete-btn" onclick="event.stopPropagation(); deletePhoto('${p.id}','${p.storage_path}')">✕</button>
+          </div>
+        `;
+      }
+
+      const grid = document.getElementById('photos');
+      grid.innerHTML = '';
+      grid.innerHTML = html;
+      setStatus('Photos loaded');
+    }
+
+    function openLightbox(src) {
+      currentIndex = photoList.indexOf(src);
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('open');
+      clearInterval(slide);
+      slide = null;
+    }
+
+    function next() {
+      if (!photoList.length) return;
+      currentIndex = (currentIndex + 1) % photoList.length;
+      document.getElementById('lightbox-img').src = photoList[currentIndex];
+    }
+
+    function prev() {
+      if (!photoList.length) return;
+      currentIndex = (currentIndex - 1 + photoList.length) % photoList.length;
+      document.getElementById('lightbox-img').src = photoList[currentIndex];
+    }
+
+    function toggleSlideshow() {
+      if (slide) {
+        clearInterval(slide);
+        slide = null;
+      } else {
+        slide = setInterval(next, 2000);
+      }
+    }
+
+    async function deletePhoto(id, path) {
+      if (!confirm('Delete photo?')) return;
+
+      const removeResult = await sb.storage.from('photos-original').remove([path]);
+      if (removeResult.error) {
+        alert(removeResult.error.message);
+        return;
+      }
+
+      const deleteResult = await sb.from('photos').delete().eq('id', id);
+      if (deleteResult.error) {
+        alert(deleteResult.error.message);
+        return;
+      }
+
+      await loadPhotos();
+      await updateMetrics();
+    }
+
+    async function deleteGallery(id) {
+      if (!confirm('Delete gallery?')) return;
+
+      const { data, error } = await sb.from('photos').select('*').eq('gallery_id', id);
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const paths = data.map(p => p.storage_path).filter(Boolean);
+
+      if (paths.length) {
+        const removeResult = await sb.storage.from('photos-original').remove(paths);
+        if (removeResult.error) {
+          alert(removeResult.error.message);
+          return;
+        }
+      }
+
+      const deletePhotosResult = await sb.from('photos').delete().eq('gallery_id', id);
+      if (deletePhotosResult.error) {
+        alert(deletePhotosResult.error.message);
+        return;
+      }
+
+      const deleteGalleryResult = await sb.from('galleries').delete().eq('id', id);
+      if (deleteGalleryResult.error) {
+        alert(deleteGalleryResult.error.message);
+        return;
+      }
+
+      await loadGalleries();
+    }
+
+    async function upload() {
+      if (!currentGallery) {
+        alert('Open a gallery first');
+        return;
+      }
+
+      const selectedFiles = Array.from(document.getElementById('files').files || []);
+      if (selectedFiles.length === 0) {
+        alert('Choose one or more photos first');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading...';
+      setUploadProgress(0, 'Checking for duplicates...');
+
+      const existingResult = await sb
+        .from('photos')
+        .select('filename,size_bytes')
+        .eq('gallery_id', currentGallery.id);
+
+      if (existingResult.error) {
+        alert(existingResult.error.message);
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload Photos';
+        resetUploadProgress();
+        return;
+      }
+
+      const existingSet = new Set(
+        (existingResult.data || []).map(p => `${p.filename}__${p.size_bytes}`)
+      );
+
+      const batchSeenSet = new Set();
+      const filesToUpload = [];
+      let skippedDuplicates = 0;
+
+      for (const f of selectedFiles) {
+        const key = `${f.name}__${f.size}`;
+        if (existingSet.has(key) || batchSeenSet.has(key)) {
+          skippedDuplicates++;
+          continue;
+        }
+        batchSeenSet.add(key);
+        filesToUpload.push(f);
+      }
+
+      if (filesToUpload.length === 0) {
+        setUploadProgress(100, `No new files to upload. Skipped ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? '' : 's'}.`);
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload Photos';
+        document.getElementById('files').value = '';
+        return;
+      }
+
+      let uploadedCount = 0;
+      const totalCount = filesToUpload.length;
+
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const f = filesToUpload[i];
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${user.id}/${currentGallery.id}/${Date.now()}-${safeName}`;
+
+        setUploadProgress(
+          Math.round((i / totalCount) * 100),
+          `Uploading ${i + 1} of ${totalCount}: ${f.name}`
+        );
+
+        const uploadResult = await sb.storage.from('photos-original').upload(path, f);
+        if (uploadResult.error) {
+          alert(uploadResult.error.message);
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = 'Upload Photos';
+          resetUploadProgress();
+          return;
+        }
+
+        const insertResult = await sb.from('photos').insert({
+          gallery_id: currentGallery.id,
+          photographer_id: user.id,
+          filename: f.name,
+          storage_path: path,
+          size_bytes: f.size
+        });
+
+        if (insertResult.error) {
+          alert(insertResult.error.message);
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = 'Upload Photos';
+          resetUploadProgress();
+          return;
+        }
+
+        uploadedCount++;
+      }
+
+      setUploadProgress(
+        100,
+        `Upload complete: ${uploadedCount} new file${uploadedCount === 1 ? '' : 's'} uploaded${skippedDuplicates ? `, ${skippedDuplicates} duplicate${skippedDuplicates === 1 ? '' : 's'} skipped` : ''}.`
+      );
+
+      document.getElementById('files').value = '';
+      await loadPhotos();
+      await updateMetrics();
+
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = 'Upload Photos';
+    }
+  </script>
 </body>
 </html>
