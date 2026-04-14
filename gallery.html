@@ -1,76 +1,518 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Gallery</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Buyer Gallery</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <style>
+    :root{
+      --blue:#0f2333;
+      --blue-deep:#0a1823;
+      --gold:#c7a35a;
+      --white:#ffffff;
+      --muted:#c8d0d6;
+      --border:rgba(255,255,255,0.10);
+    }
 
-<style>
-body{margin:0;background:#0f2333;color:#fff;font-family:system-ui}
-.wrap{max-width:1000px;margin:auto;padding:20px}
-h1{font-family:'Syne'}
+    *{box-sizing:border-box}
 
-input,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none}
-button{background:#c7a35a;font-weight:bold}
+    body{
+      margin:0;
+      background:var(--blue);
+      color:var(--white);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    }
 
-.panel{background:#0a1823;padding:16px;border-radius:12px;margin-bottom:12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+    .wrap{
+      max-width:1100px;
+      margin:auto;
+      padding:24px;
+    }
 
-img{width:100%;height:200px;object-fit:cover;border-radius:8px;cursor:pointer}
+    .brand{
+      font-family:'Syne',sans-serif;
+      font-size:34px;
+      letter-spacing:1px;
+      margin:0;
+    }
 
-.hidden{display:none}
-</style>
+    .brand-sub{
+      color:var(--gold);
+      margin-top:6px;
+      font-size:13px;
+      letter-spacing:1px;
+      text-transform:uppercase;
+    }
+
+    .panel{
+      background:var(--blue-deep);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:16px;
+    }
+
+    h2,h3{
+      font-family:'Syne',sans-serif;
+      margin-top:0;
+    }
+
+    input,button{
+      width:100%;
+      padding:12px;
+      margin-top:10px;
+      border-radius:10px;
+      border:none;
+      font-size:14px;
+    }
+
+    input{
+      background:#ffffff;
+      color:#000000;
+    }
+
+    button{
+      background:var(--gold);
+      color:#000000;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    button.secondary{
+      background:transparent;
+      color:var(--white);
+      border:1px solid var(--border);
+    }
+
+    .hidden{
+      display:none;
+    }
+
+    .status{
+      color:var(--muted);
+      font-size:13px;
+      white-space:pre-wrap;
+    }
+
+    .gallery-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+
+    .gallery-meta{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.7;
+    }
+
+    .photo-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+      gap:16px;
+    }
+
+    .photo-card{
+      background:rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:12px;
+      overflow:hidden;
+    }
+
+    .photo-card img{
+      width:100%;
+      height:220px;
+      object-fit:cover;
+      display:block;
+      cursor:pointer;
+      background:#08121a;
+    }
+
+    .photo-body{
+      padding:12px;
+    }
+
+    .photo-name{
+      font-size:13px;
+      color:var(--muted);
+      word-break:break-word;
+    }
+
+    .count{
+      font-family:'Syne',sans-serif;
+      font-size:24px;
+    }
+
+    .empty{
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .debug{
+      background:rgba(255,255,255,0.03);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px;
+      white-space:pre-wrap;
+      overflow:auto;
+      min-height:120px;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .lightbox{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.92);
+      display:none;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      z-index:999;
+    }
+
+    .lightbox.open{
+      display:flex;
+    }
+
+    .lightbox img{
+      max-width:90%;
+      max-height:80%;
+    }
+
+    .controls{
+      position:absolute;
+      top:20px;
+      width:100%;
+      display:flex;
+      justify-content:space-between;
+      padding:0 30px;
+    }
+
+    .controls button{
+      width:auto;
+      background:rgba(0,0,0,0.5);
+      color:white;
+      padding:10px 14px;
+      margin-top:0;
+    }
+
+    .bottom-controls{
+      position:absolute;
+      bottom:30px;
+      display:flex;
+      gap:10px;
+    }
+
+    .bottom-controls button{
+      width:auto;
+      margin-top:0;
+    }
+  </style>
 </head>
-
 <body>
-<div class="wrap">
+  <div class="wrap">
+    <div class="panel">
+      <h1 id="brand" class="brand">GALLERY</h1>
+      <div id="brand-sub" class="brand-sub">Private Gallery Access</div>
+    </div>
 
-<h1 id="title">Gallery</h1>
+    <div id="entry-view" class="panel">
+      <h2>Enter Gallery</h2>
+      <div class="status">Enter your name and email to access this gallery.</div>
+      <input id="visitor-name" type="text" placeholder="Your name">
+      <input id="visitor-email" type="email" placeholder="Your email">
+      <button id="enter-btn" onclick="enterGallery()">Enter Gallery</button>
+    </div>
 
-<div id="entry">
-<input id="name" placeholder="Your name">
-<input id="email" placeholder="Your email">
-<button onclick="enter()">Enter</button>
-</div>
+    <div id="gallery-view" class="hidden">
+      <div class="panel">
+        <div class="gallery-top">
+          <div>
+            <h2 id="gallery-title">Gallery</h2>
+            <div id="gallery-meta" class="gallery-meta"></div>
+          </div>
+          <div style="min-width:220px;">
+            <button class="secondary" onclick="backToEntry()">Back</button>
+          </div>
+        </div>
+      </div>
 
-<div id="gallery" class="hidden">
-<div id="photos" class="grid"></div>
-</div>
+      <div class="panel">
+        <h3>Photos</h3>
+        <div id="photo-count" class="count">0</div>
+      </div>
 
-</div>
+      <div class="panel">
+        <div id="photos" class="photo-grid"></div>
+      </div>
+    </div>
 
-<script>
-const sb = supabase.createClient(
-'https://lqqnkxqcdyudfanjmaqu.supabase.co',
-'YOUR_ANON_KEY'
-);
+    <div class="panel">
+      <h3>Status</h3>
+      <div id="status" class="status">Starting...</div>
+    </div>
 
-let galleryId=new URLSearchParams(window.location.search).get('gallery_id');
+    <div class="panel">
+      <h3>Debug</h3>
+      <div id="debug" class="debug">Debug starting...</div>
+    </div>
+  </div>
 
-async function enter(){
-const {data}=await sb.from('galleries').select('*').eq('id',galleryId).single();
-title.innerText=data.name;
+  <div id="lightbox" class="lightbox">
+    <div class="controls">
+      <button onclick="prev()">←</button>
+      <button onclick="closeLightbox()">Close</button>
+      <button onclick="next()">→</button>
+    </div>
 
-entry.style.display='none';
-gallery.style.display='block';
+    <img id="lightbox-img" alt="Preview">
 
-loadPhotos();
-}
+    <div class="bottom-controls">
+      <button onclick="toggleSlideshow()">Play / Pause</button>
+    </div>
+  </div>
 
-async function loadPhotos(){
-const {data}=await sb.from('photos').select('*').eq('gallery_id',galleryId);
+  <script>
+    const sb = supabase.createClient(
+      'https://lqqnkxqcdyudfanjmaqu.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxcW5reHFjZHl1ZGZhbmptYXF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2NjgzODAsImV4cCI6MjA5MTI0NDM4MH0.htjpf-CeEdVV1-8h8Ev98qbhxmWgD1I0mUQ7OOJ1dNs'
+    );
 
-let html='';
-for(const p of data){
-const {data:url}=await sb.storage.from('photos-original').createSignedUrl(p.storage_path,3600);
-html+=`<img src="${url.signedUrl}">`;
-}
-photos.innerHTML=html;
-}
-</script>
+    let currentGallery = null;
+    let photoList = [];
+    let currentIndex = 0;
+    let slide = null;
 
+    const params = new URLSearchParams(window.location.search);
+    const galleryId = params.get('gallery_id');
+
+    const brandEl = document.getElementById('brand');
+    const brandSubEl = document.getElementById('brand-sub');
+    const entryViewEl = document.getElementById('entry-view');
+    const galleryViewEl = document.getElementById('gallery-view');
+    const galleryTitleEl = document.getElementById('gallery-title');
+    const galleryMetaEl = document.getElementById('gallery-meta');
+    const photoCountEl = document.getElementById('photo-count');
+    const photosEl = document.getElementById('photos');
+    const statusEl = document.getElementById('status');
+    const debugEl = document.getElementById('debug');
+    const enterBtn = document.getElementById('enter-btn');
+
+    function setStatus(text){
+      statusEl.textContent = text;
+    }
+
+    function log(message){
+      const now = new Date().toLocaleTimeString('en-NZ');
+      debugEl.textContent += '\n[' + now + '] ' + message;
+      debugEl.scrollTop = debugEl.scrollHeight;
+      console.log(message);
+    }
+
+    function escapeHtml(value){
+      return String(value)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+    }
+
+    async function loadGallery(){
+      if(!galleryId){
+        setStatus('Missing gallery_id in URL');
+        log('Missing gallery_id');
+        return false;
+      }
+
+      setStatus('Loading gallery...');
+      log('Loading gallery ' + galleryId);
+
+      const { data, error } = await sb
+        .from('galleries')
+        .select('*')
+        .eq('id', galleryId)
+        .single();
+
+      if(error){
+        setStatus(error.message);
+        log(error.message);
+        return false;
+      }
+
+      currentGallery = data;
+      brandEl.textContent = (data.name || 'Gallery').toUpperCase();
+      brandSubEl.textContent = 'Private Gallery Access';
+      galleryTitleEl.textContent = data.name || 'Gallery';
+      galleryMetaEl.innerHTML =
+        'Price: $' + Number(data.price_nzd || 0).toFixed(2) + ' NZD<br>' +
+        'Status: ' + (data.is_published ? 'Live' : 'Draft');
+
+      document.title = data.name || 'Gallery';
+      log('Gallery loaded: ' + (data.name || 'Untitled'));
+      return true;
+    }
+
+    async function enterGallery(){
+      const visitorName = document.getElementById('visitor-name').value.trim();
+      const visitorEmail = document.getElementById('visitor-email').value.trim();
+
+      if(!visitorName || !visitorEmail){
+        setStatus('Enter your name and email');
+        return;
+      }
+
+      if(!currentGallery){
+        setStatus('Gallery not loaded');
+        return;
+      }
+
+      enterBtn.disabled = true;
+      enterBtn.textContent = 'Entering...';
+      setStatus('Saving visitor...');
+
+      const payload = {
+        gallery_id: currentGallery.id,
+        name: visitorName,
+        email: visitorEmail
+      };
+
+      const { error } = await sb.from('visitors').insert(payload);
+
+      if(error){
+        setStatus(error.message);
+        log('Visitor insert error: ' + error.message);
+        enterBtn.disabled = false;
+        enterBtn.textContent = 'Enter Gallery';
+        return;
+      }
+
+      log('Visitor saved: ' + visitorEmail);
+      entryViewEl.classList.add('hidden');
+      galleryViewEl.classList.remove('hidden');
+
+      await loadPhotos();
+
+      setStatus('Gallery ready');
+      enterBtn.disabled = false;
+      enterBtn.textContent = 'Enter Gallery';
+    }
+
+    function backToEntry(){
+      galleryViewEl.classList.add('hidden');
+      entryViewEl.classList.remove('hidden');
+      closeLightbox();
+      setStatus('Back to entry');
+    }
+
+    async function loadPhotos(){
+      if(!currentGallery) return;
+
+      setStatus('Loading photos...');
+
+      const { data, error } = await sb
+        .from('photos')
+        .select('*')
+        .eq('gallery_id', currentGallery.id)
+        .order('created_at', { ascending: false });
+
+      if(error){
+        setStatus(error.message);
+        log('Photos load error: ' + error.message);
+        return;
+      }
+
+      photoList = [];
+
+      if(!data || data.length === 0){
+        photoCountEl.textContent = '0';
+        photosEl.innerHTML = '<div class="empty">No photos yet</div>';
+        setStatus('No photos found');
+        return;
+      }
+
+      let html = '';
+
+      for(const p of data){
+        const { data:urlData, error:urlError } = await sb.storage
+          .from('photos-original')
+          .createSignedUrl(p.storage_path, 3600);
+
+        if(urlError || !urlData?.signedUrl){
+          log('Signed URL failed for ' + (p.filename || 'photo'));
+          continue;
+        }
+
+        const signed = urlData.signedUrl;
+        photoList.push(signed);
+
+        html += `
+          <div class="photo-card">
+            <img src="${signed}" loading="lazy" onclick="openLightbox('${signed}')">
+            <div class="photo-body">
+              <div class="photo-name">${escapeHtml(p.filename || 'Photo')}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      photoCountEl.textContent = String(photoList.length);
+
+      const grid = document.getElementById('photos');
+      grid.innerHTML = '';
+      grid.innerHTML = html || '<div class="empty">No preview images available</div>';
+
+      setStatus('Photos loaded');
+      log('Photos loaded: ' + photoList.length);
+    }
+
+    function openLightbox(src){
+      currentIndex = photoList.indexOf(src);
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+
+    function closeLightbox(){
+      document.getElementById('lightbox').classList.remove('open');
+      clearInterval(slide);
+      slide = null;
+    }
+
+    function next(){
+      if(!photoList.length) return;
+      currentIndex = (currentIndex + 1) % photoList.length;
+      document.getElementById('lightbox-img').src = photoList[currentIndex];
+    }
+
+    function prev(){
+      if(!photoList.length) return;
+      currentIndex = (currentIndex - 1 + photoList.length) % photoList.length;
+      document.getElementById('lightbox-img').src = photoList[currentIndex];
+    }
+
+    function toggleSlideshow(){
+      if(slide){
+        clearInterval(slide);
+        slide = null;
+      }else{
+        slide = setInterval(next, 2000);
+      }
+    }
+
+    async function init(){
+      const ok = await loadGallery();
+      if(ok){
+        setStatus('Ready to enter gallery');
+      }
+    }
+
+    init();
+  </script>
 </body>
 </html>
