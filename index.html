@@ -1,1 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Photoeze</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+<style>
+body{margin:0;background:#0f2333;color:#fff;font-family:system-ui}
+.wrap{max-width:1000px;margin:auto;padding:20px}
+h1{font-family:'Syne'}
+
+input,button{width:100%;padding:12px;margin-top:10px;border-radius:8px;border:none}
+button{background:#c7a35a;font-weight:bold}
+
+.panel{background:#0a1823;padding:16px;border-radius:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+
+img{width:100%;height:200px;object-fit:cover;border-radius:8px}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<h1 id="brand">PHOTOEZE</h1>
+
+<div id="auth">
+<input id="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="app" style="display:none">
+
+<button onclick="logout()">Sign Out</button>
+
+<div class="panel">
+<h2>Create Gallery</h2>
+<input id="gname" placeholder="Gallery name">
+<input id="gprice" type="number" placeholder="Price NZD">
+<button onclick="createGallery()">Create</button>
+</div>
+
+<div id="galleries" class="grid"></div>
+
+<div id="photos"></div>
+
+</div>
+
+</div>
+
+<script>
+const sb = supabase.createClient(
+'https://lqqnkxqcdyudfanjmaqu.supabase.co',
+'YOUR_ANON_KEY'
+);
+
+let user,currentGallery;
+
+async function login(){
+const {data,error}=await sb.auth.signInWithPassword({email:email.value,password:password.value});
+if(error)return alert(error.message);
+user=data.user;
+brand.innerText=user.email.split('@')[0].toUpperCase();
+auth.style.display='none';
+app.style.display='block';
+loadGalleries();
+}
+
+async function logout(){await sb.auth.signOut();location.reload();}
+
+async function loadGalleries(){
+const {data}=await sb.from('galleries').select('*').eq('photographer_id',user.id);
+galleries.innerHTML=data.map(g=>`
+<div class="panel">
+<b>${g.name}</b><br>$${g.price_nzd}
+<br>
+<button onclick="openGallery('${g.id}')">Open</button>
+<br><br>
+<b>Buyer link:</b><br>
+<a href="gallery.html?gallery_id=${g.id}" target="_blank">Open Buyer Page</a>
+</div>`).join('');
+}
+
+async function createGallery(){
+await sb.from('galleries').insert({
+photographer_id:user.id,
+name:gname.value,
+price_nzd:Number(gprice.value),
+slug:Date.now()
+});
+loadGalleries();
+}
+
+async function openGallery(id){
+currentGallery=id;
+const {data}=await sb.from('photos').select('*').eq('gallery_id',id);
+
+let html='<div class="panel"><input type="file" id="files" multiple><button onclick="upload()">Upload</button></div>';
+
+for(const p of data){
+const {data:url}=await sb.storage.from('photos-original').createSignedUrl(p.storage_path,3600);
+html+=`<img src="${url.signedUrl}">`;
+}
+
+photos.innerHTML=html;
+}
+
+async function upload(){
+const arr=Array.from(files.files);
+for(const f of arr){
+const path=user.id+'/'+currentGallery+'/'+Date.now()+f.name;
+await sb.storage.from('photos-original').upload(path,f);
+await sb.from('photos').insert({
+gallery_id:currentGallery,
+photographer_id:user.id,
+filename:f.name,
+storage_path:path
+});
+}
+openGallery(currentGallery);
+}
+</script>
+
+</body>
+</html>
