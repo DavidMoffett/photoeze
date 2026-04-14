@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Buyer Gallery</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
@@ -32,6 +32,14 @@
       padding:24px;
     }
 
+    .panel{
+      background:var(--blue-deep);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:16px;
+    }
+
     .brand{
       font-family:'Syne',sans-serif;
       font-size:34px;
@@ -47,11 +55,13 @@
       text-transform:uppercase;
     }
 
-    .panel{
-      background:var(--blue-deep);
-      border:1px solid var(--border);
-      border-radius:14px;
-      padding:18px;
+    .signal{
+      background:#fff3;
+      border:1px solid #fff5;
+      color:#fff;
+      font-weight:700;
+      border-radius:10px;
+      padding:10px 12px;
       margin-bottom:16px;
     }
 
@@ -97,15 +107,7 @@
       white-space:pre-wrap;
     }
 
-    .gallery-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:16px;
-      flex-wrap:wrap;
-    }
-
-    .gallery-meta{
+    .meta{
       color:var(--muted);
       font-size:14px;
       line-height:1.7;
@@ -217,6 +219,9 @@
 </head>
 <body>
   <div class="wrap">
+
+    <div class="signal">BUYER PAGE ACTIVE</div>
+
     <div class="panel">
       <h1 id="brand" class="brand">GALLERY</h1>
       <div id="brand-sub" class="brand-sub">Private Gallery Access</div>
@@ -224,23 +229,16 @@
 
     <div id="entry-view" class="panel">
       <h2>Enter Gallery</h2>
-      <div class="status">Enter your name and email to access this gallery.</div>
-      <input id="visitor-name" type="text" placeholder="Your name">
-      <input id="visitor-email" type="email" placeholder="Your email">
+      <div id="entry-copy" class="status">Enter your name and email to access this gallery.</div>
+      <input id="visitor-name" type="text" placeholder="Your name" />
+      <input id="visitor-email" type="email" placeholder="Your email" />
       <button id="enter-btn" onclick="enterGallery()">Enter Gallery</button>
     </div>
 
     <div id="gallery-view" class="hidden">
       <div class="panel">
-        <div class="gallery-top">
-          <div>
-            <h2 id="gallery-title">Gallery</h2>
-            <div id="gallery-meta" class="gallery-meta"></div>
-          </div>
-          <div style="min-width:220px;">
-            <button class="secondary" onclick="backToEntry()">Back</button>
-          </div>
-        </div>
+        <h2 id="gallery-title">Gallery</h2>
+        <div id="gallery-meta" class="meta"></div>
       </div>
 
       <div class="panel">
@@ -262,16 +260,17 @@
       <h3>Debug</h3>
       <div id="debug" class="debug">Debug starting...</div>
     </div>
+
   </div>
 
   <div id="lightbox" class="lightbox">
     <div class="controls">
-      <button onclick="prev()">←</button>
+      <button onclick="prevPhoto()">←</button>
       <button onclick="closeLightbox()">Close</button>
-      <button onclick="next()">→</button>
+      <button onclick="nextPhoto()">→</button>
     </div>
 
-    <img id="lightbox-img" alt="Preview">
+    <img id="lightbox-img" alt="Preview" />
 
     <div class="bottom-controls">
       <button onclick="toggleSlideshow()">Play / Pause</button>
@@ -303,6 +302,7 @@
     const statusEl = document.getElementById('status');
     const debugEl = document.getElementById('debug');
     const enterBtn = document.getElementById('enter-btn');
+    const entryCopyEl = document.getElementById('entry-copy');
 
     function setStatus(text){
       statusEl.textContent = text;
@@ -328,6 +328,7 @@
       if(!galleryId){
         setStatus('Missing gallery_id in URL');
         log('Missing gallery_id');
+        entryCopyEl.textContent = 'Missing gallery_id in URL.';
         return false;
       }
 
@@ -342,7 +343,8 @@
 
       if(error){
         setStatus(error.message);
-        log(error.message);
+        log('Gallery load error: ' + error.message);
+        entryCopyEl.textContent = error.message;
         return false;
       }
 
@@ -351,6 +353,7 @@
       brandSubEl.textContent = 'Private Gallery Access';
       galleryTitleEl.textContent = data.name || 'Gallery';
       galleryMetaEl.innerHTML =
+        'Gallery ID: ' + escapeHtml(data.id) + '<br>' +
         'Price: $' + Number(data.price_nzd || 0).toFixed(2) + ' NZD<br>' +
         'Status: ' + (data.is_published ? 'Live' : 'Draft');
 
@@ -383,17 +386,14 @@
         email: visitorEmail
       };
 
-      const { error } = await sb.from('visitors').insert(payload);
+      const insertResult = await sb.from('visitors').insert(payload);
 
-      if(error){
-        setStatus(error.message);
-        log('Visitor insert error: ' + error.message);
-        enterBtn.disabled = false;
-        enterBtn.textContent = 'Enter Gallery';
-        return;
+      if(insertResult.error){
+        log('Visitor insert skipped: ' + insertResult.error.message);
+      } else {
+        log('Visitor saved: ' + visitorEmail);
       }
 
-      log('Visitor saved: ' + visitorEmail);
       entryViewEl.classList.add('hidden');
       galleryViewEl.classList.remove('hidden');
 
@@ -402,13 +402,6 @@
       setStatus('Gallery ready');
       enterBtn.disabled = false;
       enterBtn.textContent = 'Enter Gallery';
-    }
-
-    function backToEntry(){
-      galleryViewEl.classList.add('hidden');
-      entryViewEl.classList.remove('hidden');
-      closeLightbox();
-      setStatus('Back to entry');
     }
 
     async function loadPhotos(){
@@ -440,16 +433,16 @@
       let html = '';
 
       for(const p of data){
-        const { data:urlData, error:urlError } = await sb.storage
+        const signedResult = await sb.storage
           .from('photos-original')
           .createSignedUrl(p.storage_path, 3600);
 
-        if(urlError || !urlData?.signedUrl){
+        if(signedResult.error || !signedResult.data?.signedUrl){
           log('Signed URL failed for ' + (p.filename || 'photo'));
           continue;
         }
 
-        const signed = urlData.signedUrl;
+        const signed = signedResult.data.signedUrl;
         photoList.push(signed);
 
         html += `
@@ -463,11 +456,7 @@
       }
 
       photoCountEl.textContent = String(photoList.length);
-
-      const grid = document.getElementById('photos');
-      grid.innerHTML = '';
-      grid.innerHTML = html || '<div class="empty">No preview images available</div>';
-
+      photosEl.innerHTML = html || '<div class="empty">No preview images available</div>';
       setStatus('Photos loaded');
       log('Photos loaded: ' + photoList.length);
     }
@@ -484,13 +473,13 @@
       slide = null;
     }
 
-    function next(){
+    function nextPhoto(){
       if(!photoList.length) return;
       currentIndex = (currentIndex + 1) % photoList.length;
       document.getElementById('lightbox-img').src = photoList[currentIndex];
     }
 
-    function prev(){
+    function prevPhoto(){
       if(!photoList.length) return;
       currentIndex = (currentIndex - 1 + photoList.length) % photoList.length;
       document.getElementById('lightbox-img').src = photoList[currentIndex];
@@ -501,7 +490,7 @@
         clearInterval(slide);
         slide = null;
       }else{
-        slide = setInterval(next, 2000);
+        slide = setInterval(nextPhoto, 2000);
       }
     }
 
